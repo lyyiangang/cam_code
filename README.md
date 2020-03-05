@@ -1,10 +1,15 @@
-# cam_code
-some code about camera 
+# 背景
 
-## cam_calibration
-calibration you camera via ``` calibrate_wide_angle_camera.py --input myvideo.avi```
+这里是相机常用的一些代码
 
-## mirror-cam-tnm-opencv
-get the extrinsic matrix for the object behind cammera. then you can get the coordinate of the object, which is in camera coordinate system.
-see ![takahashi2012cvpr_v1](https://computer-vision.github.io/takahashi2012cvpr/v1/) for more details
+# Features
+- [x] 相机镜头标定
 
+# 安装
+
+# 使用
+
+- 相机镜头标定
+```
+python3 cam_calibration/calibrate_wide_angle_camera.py --input cam_calibration/data/chessboard.avi
+```
