@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #usage: python calibrate_wide_angle_camera.py --input myvideo.avi
+#usage: python calibrate_wide_angle_camera.py --input '../../imgs/*.*g'
 # support video and images.
 import numpy as np
 import cv2
@@ -7,7 +8,9 @@ import os
 import argparse
 import yaml
 import pickle
+import ipdb
 from glob import glob
+import random
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calibrate camera using a video of a chessboard or a sequence of images.')
@@ -24,9 +27,11 @@ if __name__ == '__main__':
     PATTERN_SIZE = (9, 6)
     MAX_FRAMES = 100
     FLIP_Y = False
-
+    # ipdb.set_trace()
     if '*' in args.input:
         source = glob(args.input)
+        assert len(source) > 0, 'get empty list'
+        random.shuffle(source)
     else:
         source = cv2.VideoCapture(args.input)
 
