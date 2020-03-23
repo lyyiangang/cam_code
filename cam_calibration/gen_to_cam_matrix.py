@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import cv2
 import yaml
@@ -6,6 +7,15 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import pickle
 import ipdb
+
+def draw_pts(img, pts, name):
+    cp_img = img.copy()
+    print(name, pts)
+    for idx, pt in enumerate(pts.astype(np.int32)):
+        cv2.circle(cp_img, tuple(pt), 4, (0, 0, 255))
+        cv2.putText(cp_img, str(idx), tuple(pt), cv2.FONT_HERSHEY_COMPLEX, 1.0, (0, 255, 0))
+    cv2.imshow(name, cp_img)
+    cv2.waitKey(0)
 
 def ray_plane_intersect(ray_vec, ray_start_pt, plane_norm_vec, plane_refrence_pt):
     """ Test the intersection between ray and plane, http://geomalgorithms.com/a06-_intersect-2.html
@@ -25,39 +35,27 @@ def map_wcs_to_cam_cs(r_mat, t_mat, pos_cs):
                                     np.matrix(t_mat)).T
 
 def run():
-    # display width:52.2cm, height:31.3cm
-    DISPLAY_SIZE = (52.2, 31.3)
-    GLASS_CHESSBOARD_SIZE = (40, 40)
-    COMMON_CAM_INTRINSIC_DATA = '../../bst-gaze-data-collection-summary/src/data/cam_LYYovL03_1920x1080_intrinsic.yml'
-    IR_CAM_INTRINSIC_DATA = '../../bst-gaze-data-collection-summary/src/data/cam_diweitai_1569_1920x1080.yml'
-    # the screen and common plate 2d and 3d coordinate in common camera CS.
-    screen_marker_corners_in_common_cam_img_plane = np.array([
-                            (888, 105), (1578, 66), (1557, 580), (854, 452),
-                            ], dtype = np.float64)
-
-    screen_marker_corners_in_world_cs = np.array([
-                            (0, 0, 0),
-                            (DISPLAY_SIZE[0], 0, 0),
-                            (DISPLAY_SIZE[0], DISPLAY_SIZE[1], 0),
-                            (0, DISPLAY_SIZE[1], 0),
-                            ], dtype = np.float64)
-
-    common_plate_corners_in_common_cam_img_plate = np.array([
-                                                            (194, 486), (614, 414), (638, 716), (282, 851)
-                                                            ], dtype = np.float64)
-
-    common_plate_corners_in_world_cs = np.array([
-                            (0, 0, 0),
-                            (22.5, 0, 0),
-                            (22.5, 17.5, 0),
-                            (0, 17.5, 0)
-                            ], dtype = np.float64)
-    # common plate corners in IR camera CS
-    common_plate_corners_in_IR_cam_img_plate = np.array([(469, 197), (1135, 19), (1302, 511), (637, 730)], dtype = np.float64)
-
+    # display width:522cm, height:313cm
+    # PAPER_SIZE = (42, 29.7)
+    # DISPLAY_SIZE = (350, 230)
+    whole_screen_in_world_cs = np.array([(0, 0, 0),
+                                        (522, 0, 0),
+                                        (522, 313, 0),
+                                        (0, 313, 0)], np.float64)
+    meta_file = '../../bst-gaze-data-collection-summary/src/data/cam2/meta.json'
+    source_dir = os.path.dirname(meta_file)
+    with open(meta_file, 'r') as fid:
+        js = json.load(fid)
+    screen_marker_corners_in_common_cam_img_plane = np.array(js['screen_marker_corners_in_common_cam_img_plane'], \
+                                                        np.float64).reshape(-1, 2)
+    screen_marker_corners_in_world_cs = np.array(js['screen_marker_corners_in_world_cs'], np.float64).reshape(-1, 3)
+    common_plate_corners_in_common_cam_img_plate = np.array(js['common_plate_corners_in_common_cam_img_plate'], \
+                                                    np.float64).reshape(-1, 2)
+    common_plate_corners_in_world_cs = np.array(js['common_plate_corners_in_world_cs'], np.float64).reshape(-1, 3)
+    common_plate_corners_in_IR_cam_img_plate = np.array(js['common_plate_corners_in_IR_cam_img_plate'], np.float64).reshape(-1, 2)
     #------------------------------
-
-    with open(COMMON_CAM_INTRINSIC_DATA, 'r') as fid:
+    common_cam_intrainsic_file = os.path.join(source_dir,'../', js['common_cam_intrinsic_data'])
+    with open(common_cam_intrainsic_file, 'r') as fid:
         intrisic_data = yaml.load(fid)
     common_cam_intrinsic_mat = np.array(intrisic_data['camera_matrix'])
     common_cam_dist_coefs = np.array(intrisic_data['dist_coefs'][0])
@@ -82,20 +80,16 @@ def run():
                                     np.matrix(tvec_common_plate_to_common_cam)).T)
     pts_in_common_cams_cs = np.vstack(pts_in_common_cams_cs)
     print('pts_in_common_cam_cs:{}'.format(pts_in_common_cams_cs))
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(pts_in_common_cams_cs[:, 0], pts_in_common_cams_cs[:, 1], pts_in_common_cams_cs[:, 2], c='r', marker='o')
+    ## debug
+    img = cv2.imread(os.path.join(source_dir, 'common.png'))
+    draw_pts(img, screen_marker_corners_in_common_cam_img_plane, 'screen_marker_corners_in_common_cam_img_plane')
+    draw_pts(img, common_plate_corners_in_common_cam_img_plate, 'common_plate_corners_in_common_cam_img_plate')
+    img = cv2.imread(os.path.join(source_dir, 'ir.png'))
+    draw_pts(img, common_plate_corners_in_IR_cam_img_plate, 'common_plate_corners_in_common_cam_img_plate')
     LEN = 10
-    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=True)
-    ax.set_xlabel('X Label')
-    ax.set_ylabel('Y Label')
-    ax.set_zlabel('Z Label')
-    plt.show()
-
     # ----------------------IR camera setings.-------------------------
-    with open(IR_CAM_INTRINSIC_DATA, 'r') as fid:
+    ir_cam_intrinsic_file = os.path.join(source_dir, '../', js['ir_cam_intrinsic_data']) 
+    with open(ir_cam_intrinsic_file, 'r') as fid:
         intrisic_data = yaml.load(fid)
     # the IR camera can only see the glass plate before it.
     ir_cam_intrinsic_mat = np.array(intrisic_data['camera_matrix'])
@@ -106,7 +100,8 @@ def run():
     R_screen_to_ir_cam = np.matrix(rot_mat_common_plate_to_ir_cam) * np.linalg.inv(rmat_common_plate_to_common_cam) * np.matrix(rmat_screen_to_common_cam)
     T_screen_to_ir_cam = np.matrix(rot_mat_common_plate_to_ir_cam) * np.linalg.inv(rmat_common_plate_to_common_cam) * (tvec_screen_to_common_cam - \
                                     tvec_common_plate_to_common_cam) + tvec_common_plate_to_ir_cam
-    pickle_file = '{}.pickle'.format(os.path.basename(IR_CAM_INTRINSIC_DATA))
+    # pickle_file = '{}.pickle'.format(ir_cam_intrinsic_file)
+    pickle_file = os.path.join(source_dir, 'ir_R_T.pickle')
     with open(pickle_file, 'wb') as fid:
         pickle.dump({'R_screen_to_ir_cam' : R_screen_to_ir_cam, \
                     'T_screen_to_ir_cam' : T_screen_to_ir_cam}, \
@@ -114,27 +109,22 @@ def run():
         print('write conversion matrix to {}'.format(pickle_file))
 
     # map the screen points to ir camera 
-    screen_pts_in_ir_cs= map_wcs_to_cam_cs(R_screen_to_ir_cam, T_screen_to_ir_cam, screen_marker_corners_in_world_cs)
+    whole_screen_in_ir_cs = map_wcs_to_cam_cs(R_screen_to_ir_cam, T_screen_to_ir_cam, whole_screen_in_world_cs)
+    screen_pts_in_ir_cs = map_wcs_to_cam_cs(R_screen_to_ir_cam, T_screen_to_ir_cam, screen_marker_corners_in_world_cs)
     common_plate_pts_in_ir_cs = (np.matrix(rot_mat_common_plate_to_ir_cam) * np.matrix(common_plate_corners_in_world_cs).T + tvec_common_plate_to_ir_cam).T
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(screen_pts_in_ir_cs[:, 0], screen_pts_in_ir_cs[:, 1], screen_pts_in_ir_cs[:, 2], c='r', marker='o')
-    ax.scatter(common_plate_pts_in_ir_cs[:, 0], common_plate_pts_in_ir_cs[:, 1], common_plate_pts_in_ir_cs[:, 2], c= 'b', marker = 'o')
-    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=True)
+    ax.scatter(common_plate_pts_in_ir_cs[:, 0], common_plate_pts_in_ir_cs[:, 1], common_plate_pts_in_ir_cs[:, 2], c= 'y', marker = 'o')
+    ax.scatter(whole_screen_in_ir_cs[:, 0], whole_screen_in_ir_cs[:, 1], whole_screen_in_ir_cs[:, 2], c = 'r', marker = 'o')
+    LEN = 50
+    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=False)
+    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=False)
+    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=False)
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
     plt.show()
-    # set 
-    # img = cv2.imread('./data/rgb_1920x1080_2.jpg')
-    # for idx, pt in enumerate(corners_2d_rgb):
-    #     pt = pt.astype(np.int32)
-    #     cv2.circle(img, tuple(pt), 2, (0, 0, 255))
-    #     cv2.putText(img, str(idx), tuple(pt), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.0, (0, 0, 255))
-    # cv2.imshow('img', img)
-    # cv2.waitKey(0)
 
 if __name__ == '__main__':
     # test_rgb_cam_rot_mat()

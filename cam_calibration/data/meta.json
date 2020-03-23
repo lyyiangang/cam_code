@@ -1,0 +1,15 @@
+{
+    "common_cam_intrinsic_data" : "cam_LYYovL03_1920x1080_intrinsic.yml",
+    "ir_cam_intrinsic_data": "cam_diweitai_1569_1920x1080.yml",
+    "screen_marker_corners_in_world_cs" : [492.3, 271, 0,
+        522, 271, 0,
+        522, 313, 0,
+        492.3, 313, 0],
+    "common_plate_corners_in_world_cs" : [0, 0, 0,
+        12.5, 0, 0,
+        12.5, 20.0, 0,
+        0, 20.0 , 0],
+    "screen_marker_corners_in_common_cam_img_plane" : [90, 840, 173, 826, 193, 1032, 111, 1057],
+    "common_plate_corners_in_common_cam_img_plate" : [719, 192, 831, 90, 851, 806, 733, 789],
+    "common_plate_corners_in_IR_cam_img_plate" : [942, 220, 1097, 284, 1126, 747, 982, 833]
+}
