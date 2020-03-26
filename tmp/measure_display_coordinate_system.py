@@ -57,7 +57,9 @@ def test_rgb_cam_rot_mat():
                             (GLASS_CHESSBOARD_SIZE[0], GLASS_CHESSBOARD_SIZE[1], 0),
                             (0, GLASS_CHESSBOARD_SIZE[1], 0)
                             ], dtype = np.float64)
-    with open('./data/rgb_cam_for_measure_display_coord.yml', 'r') as fid:
+    path = '/home/lyy/code/cam_code/cam_calibration/data/rgb_cam_for_measure_display_coord.yml'
+    # path = './data/rgb_cam_for_measure_display_coord.yml''
+    with open(path, 'r') as fid:
         intrisic_data = yaml.load(fid)
     cam_mat_rgb = np.array(intrisic_data['camera_matrix'])
     dis_coefs_rgb = np.array(intrisic_data['dist_coefs'][0])
@@ -92,7 +94,6 @@ def test_rgb_cam_rot_mat():
         R_d2i = np.matrix(rot_mat_glass_cb_to_ir_cam) * np.linalg.inv(rot_mat_glass_cb_to_rgb_cam) * np.matrix(rot_mat_display_to_rgb_cam)
         T_d2i = np.matrix(rot_mat_glass_cb_to_ir_cam) * np.linalg.inv(rot_mat_glass_cb_to_rgb_cam) * (tvec_display_to_rgb_cam - tvec_glass_cb_to_rgb_cam) + tvec_glass_cb_to_ir_cam
         return R_d2i, T_d2i
-
     pts_in_ir_cam_cs = []
     # map 3 A3 paper corners to IR camera coordinate system
     disp_rot_trans_mat_dict = {}
@@ -112,6 +113,10 @@ def test_rgb_cam_rot_mat():
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(pts_in_ir_cam_cs[:, 0], pts_in_ir_cam_cs[:, 1], pts_in_ir_cam_cs[:, 2], c='r', marker='o')
+    LEN = 50
+    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=False)
+    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=False)
+    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=False)
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
