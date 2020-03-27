@@ -110,6 +110,14 @@ def test_rgb_cam_rot_mat():
     pts_in_ir_cam_cs = np.vstack(pts_in_ir_cam_cs)
     np.savetxt('pts_in_ir_cam_cs.xyz', pts_in_ir_cam_cs)
 
+    # debug start -----------------
+    import ipdb; ipdb.set_trace()
+    cur_max = pts_in_ir_cam_cs[:4, :]
+    est_h = np.linalg.norm(cur_max[0] - cur_max[3])
+    est_w = np.linalg.norm(cur_max[0] - cur_max[1])
+    print(f'est_h:{est_h}, est_w:{est_w}')
+    # debug end---------------------
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(pts_in_ir_cam_cs[:, 0], pts_in_ir_cam_cs[:, 1], pts_in_ir_cam_cs[:, 2], c='r', marker='o')

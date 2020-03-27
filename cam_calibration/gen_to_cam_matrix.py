@@ -1,11 +1,12 @@
-import os
 import numpy as np
 import cv2
 import yaml
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-import pickle
-import ipdb
+import json
+
+PAPER_SIZE = (42, 29.7)
+GLASS_CHESSBOARD_SIZE = (40, 40)
 
 def ray_plane_intersect(ray_vec, ray_start_pt, plane_norm_vec, plane_refrence_pt):
     """ Test the intersection between ray and plane, http://geomalgorithms.com/a06-_intersect-2.html
@@ -19,123 +20,113 @@ def ray_plane_intersect(ray_vec, ray_start_pt, plane_norm_vec, plane_refrence_pt
     print('dist:{}'.format(np.dot(ray_start_pt + t * ray_vec - plane_refrence_pt, plane_norm_vec)))
     return ray_start_pt + t * ray_vec, t
 
-def map_wcs_to_cam_cs(r_mat, t_mat, pos_cs):
-    assert pos_cs.shape[1] == 3
-    return (np.matrix(r_mat) * np.matrix(pos_cs).T + \
-                                    np.matrix(t_mat)).T
 
-def run():
-    # display width:52.2cm, height:31.3cm
-    DISPLAY_SIZE = (52.2, 31.3)
-    GLASS_CHESSBOARD_SIZE = (40, 40)
-    COMMON_CAM_INTRINSIC_DATA = '../../bst-gaze-data-collection-summary/src/data/cam_LYYovL03_1920x1080_intrinsic.yml'
-    IR_CAM_INTRINSIC_DATA = '../../bst-gaze-data-collection-summary/src/data/cam_diweitai_1569_1920x1080.yml'
-    # the screen and common plate 2d and 3d coordinate in common camera CS.
-    screen_marker_corners_in_common_cam_img_plane = np.array([
-                            (888, 105), (1578, 66), (1557, 580), (854, 452),
+def test_rgb_cam_rot_mat():
+    """ evaluate the rotation and translation matrix in DMS IR camera coordinate system.
+        Background: Since the 3 displays are behind the IR camera, we can't get the display corners' position in camera coordinate system.
+        this system trys to solve this problem. the system contains 2 cameras, one RGB camera, it captures 4 * 3 = 12 reference points on 3 displays and 4 reference points on 
+        one glass chessboard. The other one is IR camera. it captures the same one glass chessboard and use the same 4 reference points like the RGB camera does.
+        this function will try to map the points on displays to IR camera coordinate system.
+    """
+    #display size: (350, 230) 
+    # big plate size(119.3, 83.3)
+    corners_2d_rgb = np.array([
+                            # screen pos
+                            (90, 34), (972, 27), (985, 587), (95, 634),
+                            # glass chessboard
+                            (397, 363), (850, 386), (794, 671), (363, 659)
                             ], dtype = np.float64)
-
-    screen_marker_corners_in_world_cs = np.array([
+    corners_3d_rgb = np.array([
+                            # screen corners in rgb cs 
                             (0, 0, 0),
-                            (DISPLAY_SIZE[0], 0, 0),
-                            (DISPLAY_SIZE[0], DISPLAY_SIZE[1], 0),
-                            (0, DISPLAY_SIZE[1], 0),
-                            ], dtype = np.float64)
+                            (350, 0, 0),
+                            (350, 230, 0),
+                            (0, 230, 0),
 
-    common_plate_corners_in_common_cam_img_plate = np.array([
-                                                            (194, 486), (614, 414), (638, 716), (282, 851)
-                                                            ], dtype = np.float64)
-
-    common_plate_corners_in_world_cs = np.array([
+                            # chessboard corners(common plate)
                             (0, 0, 0),
-                            (22.5, 0, 0),
-                            (22.5, 17.5, 0),
-                            (0, 17.5, 0)
+                            (119.3, 0, 0),
+                            (119.3, 83.3, 0),
+                            (0, 83.3, 0)
                             ], dtype = np.float64)
-    # common plate corners in IR camera CS
-    common_plate_corners_in_IR_cam_img_plate = np.array([(469, 197), (1135, 19), (1302, 511), (637, 730)], dtype = np.float64)
-
-    #------------------------------
-
-    with open(COMMON_CAM_INTRINSIC_DATA, 'r') as fid:
+    # Warning, the order is anti-clockwise.
+    corners_2d_ir = np.array([(1356, 368), (581, 437), (591, 1042), (1515, 903)], dtype = np.float64)
+    path = '/home/lyy/code/bst-gaze-data-collection-summary/src/data/cam_LYYovL03_1920x1080_intrinsic.yml'
+    ir_path = '/home/lyy/code/bst-gaze-data-collection-summary/src/data/cam_diweitai_1733_1920x1080.yml'
+    with open(path, 'r') as fid:
         intrisic_data = yaml.load(fid)
-    common_cam_intrinsic_mat = np.array(intrisic_data['camera_matrix'])
-    common_cam_dist_coefs = np.array(intrisic_data['dist_coefs'][0])
-    pts_in_common_cams_cs = []
-    # ipdb.set_trace()
-    _, rvec_screen_to_common_cam, tvec_screen_to_common_cam = cv2.solvePnP(screen_marker_corners_in_world_cs, \
-                                                                    screen_marker_corners_in_common_cam_img_plane, \
-                                                                    common_cam_intrinsic_mat, \
-                                                                    common_cam_dist_coefs,  \
-                                                                    flags = cv2.SOLVEPNP_ITERATIVE)
-    rmat_screen_to_common_cam, _ = cv2.Rodrigues(rvec_screen_to_common_cam)
-    pts_in_common_cams_cs.append((np.matrix(rmat_screen_to_common_cam) * np.matrix(screen_marker_corners_in_world_cs).T + \
-                                    np.matrix(tvec_screen_to_common_cam)).T)
+    cam_mat_rgb = np.array(intrisic_data['camera_matrix'])
+    dis_coefs_rgb = np.array(intrisic_data['dist_coefs'][0])
 
-    _, rvec_common_plate_to_common_cam, tvec_common_plate_to_common_cam = cv2.solvePnP(common_plate_corners_in_world_cs, \
-                                                                                    common_plate_corners_in_common_cam_img_plate, \
-                                                                                    common_cam_intrinsic_mat,\
-                                                                                    common_cam_dist_coefs, \
-                                                                                    flags = cv2.SOLVEPNP_ITERATIVE)
-    rmat_common_plate_to_common_cam, _ = cv2.Rodrigues(rvec_common_plate_to_common_cam)
-    pts_in_common_cams_cs.append((np.matrix(rmat_common_plate_to_common_cam) * np.matrix(common_plate_corners_in_world_cs).T + \
-                                    np.matrix(tvec_common_plate_to_common_cam)).T)
-    pts_in_common_cams_cs = np.vstack(pts_in_common_cams_cs)
-    print('pts_in_common_cam_cs:{}'.format(pts_in_common_cams_cs))
+    pts_in_rgb_cs = []
+    rot_mats = []
+    tvecs = []
+    for ii in range(2):
+        start_idx = ii * 4
+        ret, rvec, tvec = cv2.solvePnP(corners_3d_rgb[start_idx : start_idx + 4, :], corners_2d_rgb[start_idx : start_idx + 4, :], 
+                                    cam_mat_rgb, dis_coefs_rgb, flags = cv2.SOLVEPNP_ITERATIVE) #np.zeros((1,4))
+        rmat, _ = cv2.Rodrigues(rvec)
+        rot_mats.append(rmat)
+        tvecs.append(tvec)
+        pts_in_rgb_cs.append((np.matrix(rmat) * np.matrix(corners_3d_rgb[start_idx : start_idx + 4]).T + np.matrix(tvec)).T)
+
+    with open(ir_path, 'r') as fid:
+        intrisic_data = yaml.load(fid)
+    cam_mat_ir = np.array(intrisic_data['camera_matrix'])
+    dis_coefs_ir = np.array(intrisic_data['dist_coefs'][0])
+    ret, rvec_glass_cb_to_ir_cam, tvec_glass_cb_to_ir_cam = cv2.solvePnP(corners_3d_rgb[1 * 4 : 1 * 4+ 4, :], corners_2d_ir, 
+                                                                        cam_mat_ir, dis_coefs_ir, flags = cv2.SOLVEPNP_ITERATIVE)
+    rot_mat_glass_cb_to_ir_cam, _ = cv2.Rodrigues(rvec_glass_cb_to_ir_cam)
+
+    def get_display_rot_trans_mat(rot_mat_display_to_rgb_cam, tvec_display_to_rgb_cam):
+        # get the rotation and translation matrix which transform the point on screen to ir camera system
+        # 1. move the points on screen to chessboard(common) cs
+        # 2. move the points in rgb cs to chessboard cs
+        # 3. map the points in chessboard cs to ir cs
+        rot_mat_glass_cb_to_rgb_cam = rot_mats[-1] # glass cs to rgb cs
+        tvec_glass_cb_to_rgb_cam = tvecs[-1]
+        R_d2i = np.matrix(rot_mat_glass_cb_to_ir_cam) * np.linalg.inv(rot_mat_glass_cb_to_rgb_cam) * np.matrix(rot_mat_display_to_rgb_cam)
+        T_d2i = np.matrix(rot_mat_glass_cb_to_ir_cam) * np.linalg.inv(rot_mat_glass_cb_to_rgb_cam) * \
+                    (tvec_display_to_rgb_cam - tvec_glass_cb_to_rgb_cam) + tvec_glass_cb_to_ir_cam
+        return R_d2i, T_d2i
+    pts_in_ir_cam_cs = []
+    disp_rot_trans_mat_dict = {}
+    for ii in range(2 * 4):
+        window_idx = ii // 4
+        R, T = get_display_rot_trans_mat(rot_mats[window_idx], tvecs[window_idx])
+        pts_in_ir_cam_cs.append((R * np.matrix(corners_3d_rgb[ii, :]).T + T).T)
+        if window_idx not in disp_rot_trans_mat_dict:
+            disp_rot_trans_mat_dict[window_idx] = {'R' : R, 'T' : T}
+    pts_in_ir_cam_cs = np.vstack(pts_in_ir_cam_cs)
+
+    # debug start -----------------
+    cur_max = pts_in_ir_cam_cs[:4, :]
+    est_h = np.linalg.norm(cur_max[0] - cur_max[3])
+    est_w = np.linalg.norm(cur_max[0] - cur_max[1])
+    print(f'est_h:{est_h}, est_w:{est_w}')
+    whole_screen_in_world_cs = np.array([(0, 0, 0),
+                                        (350, 0, 0),
+                                        (350, 230, 0),
+                                        (0, 230, 0)], np.float64)
+    screen_corners = (disp_rot_trans_mat_dict[0]['R'] @ whole_screen_in_world_cs.T + disp_rot_trans_mat_dict[0]['T']).T
+    corners_to_cam_orgin = np.linalg.norm(screen_corners, axis = 1)
+    print(f'corners_to_cam_orgin:{corners_to_cam_orgin}')
+    # debug end---------------------
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(pts_in_common_cams_cs[:, 0], pts_in_common_cams_cs[:, 1], pts_in_common_cams_cs[:, 2], c='r', marker='o')
-    LEN = 10
-    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=True)
+    ax.scatter(pts_in_ir_cam_cs[:, 0], pts_in_ir_cam_cs[:, 1], pts_in_ir_cam_cs[:, 2], c='r', marker='o')
+    ax.scatter(screen_corners[:, 0], screen_corners[:, 1], screen_corners[:, 2], c='y', marker='o')
+    LEN = 50
+    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=False)
+    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=False)
+    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=False)
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
     plt.show()
 
-    # ----------------------IR camera setings.-------------------------
-    with open(IR_CAM_INTRINSIC_DATA, 'r') as fid:
-        intrisic_data = yaml.load(fid)
-    # the IR camera can only see the glass plate before it.
-    ir_cam_intrinsic_mat = np.array(intrisic_data['camera_matrix'])
-    ir_cam_dist_coefs_mat = np.array(intrisic_data['dist_coefs'][0])
-    _, rvec_common_plate_to_ir_cam, tvec_common_plate_to_ir_cam = cv2.solvePnP(common_plate_corners_in_world_cs, common_plate_corners_in_IR_cam_img_plate, 
-                                                                        ir_cam_intrinsic_mat, ir_cam_dist_coefs_mat, flags = cv2.SOLVEPNP_ITERATIVE)
-    rot_mat_common_plate_to_ir_cam, _ = cv2.Rodrigues(rvec_common_plate_to_ir_cam)
-    R_screen_to_ir_cam = np.matrix(rot_mat_common_plate_to_ir_cam) * np.linalg.inv(rmat_common_plate_to_common_cam) * np.matrix(rmat_screen_to_common_cam)
-    T_screen_to_ir_cam = np.matrix(rot_mat_common_plate_to_ir_cam) * np.linalg.inv(rmat_common_plate_to_common_cam) * (tvec_screen_to_common_cam - \
-                                    tvec_common_plate_to_common_cam) + tvec_common_plate_to_ir_cam
-    pickle_file = '{}.pickle'.format(os.path.basename(IR_CAM_INTRINSIC_DATA))
-    with open(pickle_file, 'wb') as fid:
-        pickle.dump({'R_screen_to_ir_cam' : R_screen_to_ir_cam, \
-                    'T_screen_to_ir_cam' : T_screen_to_ir_cam}, \
-                        fid) 
-        print('write conversion matrix to {}'.format(pickle_file))
 
-    # map the screen points to ir camera 
-    screen_pts_in_ir_cs= map_wcs_to_cam_cs(R_screen_to_ir_cam, T_screen_to_ir_cam, screen_marker_corners_in_world_cs)
-    common_plate_pts_in_ir_cs = (np.matrix(rot_mat_common_plate_to_ir_cam) * np.matrix(common_plate_corners_in_world_cs).T + tvec_common_plate_to_ir_cam).T
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(screen_pts_in_ir_cs[:, 0], screen_pts_in_ir_cs[:, 1], screen_pts_in_ir_cs[:, 2], c='r', marker='o')
-    ax.scatter(common_plate_pts_in_ir_cs[:, 0], common_plate_pts_in_ir_cs[:, 1], common_plate_pts_in_ir_cs[:, 2], c= 'b', marker = 'o')
-    ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=True)
-    ax.quiver(0, 0, 0, 0, 0, 1, length=LEN, normalize=True)
-    ax.set_xlabel('X Label')
-    ax.set_ylabel('Y Label')
-    ax.set_zlabel('Z Label')
-    plt.show()
-    # set 
-    # img = cv2.imread('./data/rgb_1920x1080_2.jpg')
-    # for idx, pt in enumerate(corners_2d_rgb):
-    #     pt = pt.astype(np.int32)
-    #     cv2.circle(img, tuple(pt), 2, (0, 0, 255))
-    #     cv2.putText(img, str(idx), tuple(pt), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1.0, (0, 0, 255))
-    # cv2.imshow('img', img)
-    # cv2.waitKey(0)
 
 if __name__ == '__main__':
-    # test_rgb_cam_rot_mat()
-    run()
+    test_rgb_cam_rot_mat()
