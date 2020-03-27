@@ -5,17 +5,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import json
 
-PAPER_SIZE = (42, 29.7)
+PAPER_SIZE, DISPLAY_SIZE = (42, 29.7), (105.5, 59.5)
 GLASS_CHESSBOARD_SIZE = (40, 40)
-
-def draw_pts(img, pts, name):
-    cp_img = img.copy()
-    print(name, pts)
-    for idx, pt in enumerate(pts.astype(np.int32)):
-        cv2.circle(cp_img, tuple(pt), 4, (0, 0, 255))
-        cv2.putText(cp_img, str(idx), tuple(pt), cv2.FONT_HERSHEY_COMPLEX, 1.0, (0, 255, 0))
-    cv2.imshow(name, cp_img)
-    cv2.waitKey(0)
 
 def ray_plane_intersect(ray_vec, ray_start_pt, plane_norm_vec, plane_refrence_pt):
     """ Test the intersection between ray and plane, http://geomalgorithms.com/a06-_intersect-2.html
