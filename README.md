@@ -4,6 +4,7 @@
 
 # Features
 - [ ] 相机镜头标定
+- [ ] 屏幕坐标向相机坐标转换程序
 
 # 安装
 
@@ -13,6 +14,13 @@
 ```
 python3 cam_calibration/calibrate_wide_angle_camera.py --input cam_calibration/data/chessboard.avi
 ```
+- 屏幕坐标到相机坐标的转换
+```
+python3 cam_calibration/gen_to_cam_matrix.py 
+```
+corners_2d_rgb 为rgb相机下屏幕和标定板的角点坐标
+corners_3d_rgb 为对应角点三维坐标
+
 # 多相机标定
 ## 问题描述
 如下图所示， IR camera位于屏幕（screen）和common_plate之间， IR相机是可以看到common_plate的， 可以通过标定得到common_plate在IR camera的相机坐标系下的坐标， 但是现在需要知道屏幕（screen）上任意一点在IR camera的相机坐标系下的坐标。

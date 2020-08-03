@@ -5,9 +5,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import json
 
-PAPER_SIZE = (42, 29.7)
-GLASS_CHESSBOARD_SIZE = (40, 40)
-
 def draw_pts(img, pts, name):
     cp_img = img.copy()
     print(name, pts)
@@ -126,6 +123,10 @@ def test_rgb_cam_rot_mat():
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(pts_in_ir_cam_cs[:, 0], pts_in_ir_cam_cs[:, 1], pts_in_ir_cam_cs[:, 2], c='r', marker='o')
     ax.scatter(screen_corners[:, 0], screen_corners[:, 1], screen_corners[:, 2], c='y', marker='o')
+    for ii in range(len(screen_corners)):
+        ax.text(screen_corners[ii, 0], screen_corners[ii, 1], screen_corners[ii, 2], s = str(ii))
+    # ax.text(m[i,0],m[i,1],m[i,2],  '%s' % (str(i)), size=20, zorder=1, color='k') 
+
     LEN = 50
     ax.quiver(0, 0, 0, 1, 0, 0, length=LEN, normalize=False)
     ax.quiver(0, 0, 0, 0, 1, 0, length=LEN, normalize=False)
