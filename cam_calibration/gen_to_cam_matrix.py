@@ -57,8 +57,8 @@ def test_rgb_cam_rot_mat():
                             ], dtype = np.float64)
     # Warning, the order is anti-clockwise.
     corners_2d_ir = np.array([(1356, 368), (581, 437), (591, 1042), (1515, 903)], dtype = np.float64)
-    path = '/home/lyy/code/bst-gaze-data-collection-summary/src/data/cam_LYYovL03_1920x1080_intrinsic.yml'
-    ir_path = '/home/lyy/code/bst-gaze-data-collection-summary/src/data/cam_diweitai_1733_1920x1080.yml'
+    path = '../../src/data/cam_LYYovL03_1920x1080_intrinsic.yml'
+    ir_path = '../../src/data/cam_diweitai_1733_1920x1080.yml'
     with open(path, 'r') as fid:
         intrisic_data = yaml.load(fid)
     cam_mat_rgb = np.array(intrisic_data['camera_matrix'])
@@ -135,8 +135,6 @@ def test_rgb_cam_rot_mat():
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
     plt.show()
-
-
 
 if __name__ == '__main__':
     test_rgb_cam_rot_mat()
